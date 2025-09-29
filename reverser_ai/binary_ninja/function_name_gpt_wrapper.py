@@ -1,10 +1,10 @@
 from binaryninja import log_info, log_warn
 from binaryninja.settings import Settings
 
-from ..gpt.function_name_gpt import FunctionNameGPT
+from ..gpt.base_wrapper import BaseFunctionNameGPTWrapper
 
 
-class FunctionNameGPTWrapper:
+class FunctionNameGPTWrapper(BaseFunctionNameGPTWrapper):
     """
     FunctionNameGPTWrapper is a specialized class designed for use with Binary Ninja.
     It leverages the FunctionNameGPT class to generate function name suggestions based on the
@@ -19,10 +19,8 @@ class FunctionNameGPTWrapper:
         """
         Initializes the FunctionNameGPTWrapper instance with a given configuration.
         """
-        # Read GPT config from Binary Ninja Settings
-        config = self.read_config()
-        # Instantiate FunctionNameGPT with user configuration
-        self.name_gpt = FunctionNameGPT(config)
+        # Read GPT config from Binary Ninja Settings and initialize base class
+        super().__init__()
 
     @staticmethod
     def read_config():
@@ -61,6 +59,19 @@ class FunctionNameGPTWrapper:
         # Generate a formatted string from the HLIL lines of the function
         return f"{str(f)}\n" + ''.join(["\t" + line + "\n" for line in map(str, f.hlil.root.lines)])
 
+    def get_decompiler_output(self, function_obj):
+        """
+        Extracts and returns the decompiler output for a given function as a string.
+        This method implements the abstract method from BaseFunctionNameGPTWrapper.
+
+        Parameters:
+        - function_obj: A BinaryNinja Function object.
+
+        Returns:
+        - str: The decompiler output for the function, formatted as a string.
+        """
+        return self.get_hlil_output(function_obj)
+
     def get_function_name_suggestion(self, f):
         """
         Queries NameGPT to obtain a suggested name for a given function based on its HLIL decompiler output.
@@ -71,8 +82,48 @@ class FunctionNameGPTWrapper:
         Returns:
         - str: The suggested function name.
         """
-        # Get HLIL output for the function and query FunctionNameGPT for a name suggestion
-        return self.name_gpt.get_function_name_suggestion(self.get_hlil_output(f))
+        # Use the base class implementation
+        return super().get_function_name_suggestion(f)
+
+    def log_info(self, message):
+        """
+        Logs an informational message using Binary Ninja's logging system.
+        
+        Parameters:
+        - message (str): The message to log.
+        """
+        log_info(message, logger="ReverseAI")
+
+    def log_warn(self, message):
+        """
+        Logs a warning message using Binary Ninja's logging system.
+        
+        Parameters:
+        - message (str): The warning message to log.
+        """
+        log_warn(message, logger="ReverseAI")
+
+    def get_function_name(self, function_obj):
+        """
+        Gets the current name of the function.
+        
+        Parameters:
+        - function_obj: A BinaryNinja Function object.
+        
+        Returns:
+        - str: The current function name.
+        """
+        return function_obj.name
+
+    def set_function_name(self, function_obj, name):
+        """
+        Sets the name of the function.
+        
+        Parameters:
+        - function_obj: A BinaryNinja Function object.
+        - name (str): The new function name.
+        """
+        function_obj.name = name
 
     def apply_suggestion(self, f):
         """
@@ -82,13 +133,5 @@ class FunctionNameGPTWrapper:
         Parameters:
         - f (Function): A BinaryNinja Function object to rename.
         """
-        # Obtain the suggested name for the function
-        try:
-            suggested_name = self.get_function_name_suggestion(f)
-            log_info(
-                f"Renaming {f.name} to {suggested_name}", logger="ReverseAI")
-            # Apply the suggested name to the function
-            f.name = suggested_name
-        # Catch error and print warning
-        except ValueError as err:
-            log_warn(f"Function {f.name}: {err}", logger="ReverseAI")
+        # Use the safe apply suggestion method from the base class
+        self.safe_apply_suggestion(f)

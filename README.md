@@ -23,16 +23,19 @@ Some example use cases can be found in [examples](./examples).
 
 - **Automatic Function Naming**: Automatically suggests semantically meaningful function names from decompiler output.
 
-- **Binary Ninja Integration**: Seamlessly integrates as a plugin with Binary Ninja.
-
-- **Modular Architecture**: Designed for easy extension to support other reverse engineering tools like IDA and Ghidra.
+- **Multi-Tool Integration**: Seamlessly integrates with multiple reverse engineering platforms:
+  - **Binary Ninja**: Full plugin integration with UI commands
+  - **Ghidra**: Script-based integration with decompiler API
+  - **Extensible Architecture**: Designed for easy extension to IDA and other tools
 
 - **Consumer Hardware Compatibility**: Optimized to run on consumer-grade hardware, such as Apple silicon architectures.
 
 
 ## Installation
 
-_ReverserAI_ can be easily integrated via Binary Ninja's plugin manager. Alternatively, for those preferring command line installation, execute in Binary Ninja's `plugins` folder:
+### General Installation
+
+_ReverserAI_ can be installed from source for use with multiple reverse engineering tools:
 
 ```bash
 git clone https://github.com/mrphrazer/reverser_ai.git
@@ -44,6 +47,18 @@ pip3 install -r requirements.txt
 # install ReverserAI
 pip3 install .
 ```
+
+### Binary Ninja Plugin Installation
+
+For Binary Ninja integration, _ReverserAI_ can be easily integrated via Binary Ninja's plugin manager. Alternatively, manually install in Binary Ninja's `plugins` folder using the commands above.
+
+### Ghidra Integration
+
+For Ghidra integration:
+
+1. Install ReverserAI using the general installation steps above
+2. Copy the scripts from `ghidra_scripts/` to your Ghidra scripts directory
+3. Launch Ghidra and run the scripts from the Script Manager
 
 Upon initial launch, the tool will automatically download the `mistral-7b-instruct-v0.2.Q4_K_M.gguf` large language model file (~5GB). The download time varies based on internet connection speed. To manually initiate the download, execute the [`model_download.py`](scripts/model_download.py) script.
 
@@ -59,6 +74,8 @@ _ReverserAI_ is accessible through Binary Ninja's user interface and via command
 
 ### User Interface
 
+#### Binary Ninja
+
 To invoke the plugin within Binary Ninja, navigate to `Plugins -> ReverserAI` and, for example, run "Rename All Functions":
 
 <p align="left">
@@ -70,6 +87,35 @@ Depending on the total number of functions in the binary, this may take a while.
 <p align="center">
 <img alt="Binary Ninja Log" src="imgs/plugin_results.png"/>
 </p>
+
+#### Ghidra
+
+To use ReverserAI with Ghidra:
+
+1. **Install ReverserAI** following the installation instructions above
+2. **Copy Ghidra Scripts**: Copy the scripts from `ghidra_scripts/` to your Ghidra scripts directory
+3. **Launch Ghidra** and open your target binary
+4. **Run Scripts**: Access the scripts through Ghidra's Script Manager:
+   - `ReverserAI_RenameAllFunctions.py` - Rename all functions in the program
+   - `ReverserAI_RenameFunction.py` - Rename the currently selected function
+
+The scripts will automatically:
+- Initialize the decompiler interface
+- Generate decompiled code for functions
+- Query the local LLM for name suggestions
+- Apply the suggestions to rename functions in Ghidra
+
+#### Command Line
+
+For testing and experimentation, use the standalone scripts:
+
+```bash
+# Test with Binary Ninja-style output
+python3 scripts/gpt_function_namer.py example_config.toml
+
+# Test with Ghidra-style output
+python3 scripts/ghidra_function_namer.py example_config.toml
+```
 
 
 ### Configuration
@@ -100,9 +146,26 @@ To adjust settings in Binary Ninja, open `Settings` and search for `reverser_ai`
 Each change requires a restart of Binary Ninja.
 
 
-#### Parameter Tuning
+#### Configuration Files
 
-For detailed parameter adjustment, utilize the [`gpt_function_namer.py`](scripts/gpt_function_namer.py) script with a configuration file, starting with the provided [`example_config.toml`](example_config.toml):
+_ReverserAI_ now supports enhanced configuration files that allow tool-specific settings and more granular control. You can:
+
+1. **Create a configuration template**:
+   ```bash
+   python3 scripts/config_manager.py create my_config.toml
+   ```
+
+2. **Validate your configuration**:
+   ```bash
+   python3 scripts/config_manager.py validate my_config.toml
+   ```
+
+3. **View tool-specific settings**:
+   ```bash
+   python3 scripts/config_manager.py tool-config my_config.toml ghidra
+   ```
+
+For detailed parameter adjustment, utilize the enhanced configuration system with files like [`example_config_full.toml`](example_config_full.toml) that support tool-specific settings:
 
 ```
 $ time python3 scripts/gpt_function_namer.py example_config.toml
@@ -121,10 +184,27 @@ _ReverserAI_'s codebase maintains a clear separation between generic LLM functio
 - **`gpt` Folder**: Contains code for interacting with large language models (LLMs). This includes:
   - A generic agent (`agent.py`) for model-agnostic operations.
   - A specialized module (`function_name_gpt.py`) for generating function name suggestions.
+  - A base wrapper class (`base_wrapper.py`) that provides common functionality for all tool integrations.
 
 - **`binary_ninja` Folder**: Hosts wrapper instances that:
   - Utilize Binary Ninja features to produce decompiler outputs.
   - Interface with the `gpt` folder's agents, enabling LLM-powered function naming within Binary Ninja.
+  - Inherit from the base wrapper class for consistent behavior.
+
+- **`ghidra` Folder**: Contains Ghidra-specific integration components:
+  - Ghidra function name wrapper (`function_name_gpt_wrapper.py`) that interfaces with Ghidra's decompiler API.
+  - Manager class for singleton pattern implementation.
+  - Utility functions for Ghidra-specific operations.
+
+- **`ghidra_scripts` Folder**: Ready-to-use Ghidra scripts that:
+  - Provide user-friendly interfaces for ReverserAI functionality within Ghidra.
+  - Handle Ghidra-specific initialization and transaction management.
+  - Can be directly imported into Ghidra's script manager.
+
+- **`scripts` Folder**: Command-line utilities and demos:
+  - Configuration management tools.
+  - Standalone function naming demos for different tools.
+  - Model download and setup utilities.
   
 
 ## Limitations and Future Work
@@ -139,7 +219,9 @@ _ReverserAI_ serves as a proof of concept that demonstrates the potential of lev
 
 * Expanding functionality to include code explanations, analysis, and bug detection, subject to scalability and feasibility.
 
-* Extending support to other reverse engineering platforms such as IDA and Ghidra.
+* Extending support to additional reverse engineering platforms such as IDA Pro (Ghidra support has been added in this version).
+
+* Implementing variable renaming, structure recovery, and other advanced reverse engineering assistance features.
 
 This project welcomes further contributions, suggestions, and enhancements, including pull requests.
 

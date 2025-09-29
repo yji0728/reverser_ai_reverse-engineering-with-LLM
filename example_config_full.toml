@@ -1,0 +1,46 @@
+# ReverserAI Full Configuration Example
+# Adjust according to your hardware capabilities and preferences
+
+# Model Configuration
+# ===================
+
+# Optimize speed by loading the entire model into memory (requires ~5GB RAM)
+use_mmap = true
+
+# Utilize CPU threads; set to 0 to prioritize GPU usage over CPU
+# For full CPU load, set to maximum number of available threads
+n_threads = 0
+
+# Utilize GPU layers for faster processing with a strong GPU
+n_gpu_layers = 99
+
+# Ensure deterministic model outputs by specifying a seed
+seed = 0
+
+# Toggle verbose logging of model configurations
+verbose = false
+
+# Tool-Specific Configuration
+# ===========================
+
+[tools.binary_ninja]
+enabled = true
+decompiler_type = "hlil"  # High-Level Intermediate Language
+
+[tools.ghidra]
+enabled = true
+decompiler_timeout = 30
+use_function_signature_fallback = true
+
+[tools.ida]
+enabled = false  # Not implemented yet
+decompiler_type = "hexrays"
+
+# Function Naming Settings
+# ========================
+
+[function_naming]
+max_name_length = 50
+sanitize_names = true
+skip_library_functions = true
+skip_derived_names = true
